@@ -34,11 +34,11 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/medicine-drone-logo.png" 
+              src="/lovable-uploads/a25f0758-913a-43c9-bdb5-2b9cf0968628.png" 
               alt="MediDrone Logo"
               className="h-8 w-8"
               onError={(e) => {
-                e.currentTarget.src = '/medicine-drone-logo.png';
+                e.currentTarget.src = 'https://placehold.co/32x32?text=MD';
               }}
             />
             <span className="text-xl font-semibold text-primary">MediDrone</span>

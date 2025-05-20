@@ -53,6 +53,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function AdminPage() {
+  console.log("Admin component rendering"); // Debug log
+  
   const { user } = useAuth();
   const navigate = useNavigate();
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -76,23 +78,37 @@ export default function AdminPage() {
     },
   });
 
+  // Debug the user authentication state
+  useEffect(() => {
+    console.log("Admin component - user state:", user);
+  }, [user]);
+
   // Check if user is admin and load medicines
   useEffect(() => {
     const checkAdmin = async () => {
+      console.log("Checking admin status, user:", user); // Debug log
+      
       if (!user) {
+        console.log("No user found, redirecting to home"); // Debug log
         navigate("/");
         return;
       }
 
       try {
         setLoading(true);
+        console.log("Calling checkIsAdmin with ID:", user.id); // Debug log
         const adminStatus = await checkIsAdmin(user.id);
+        console.log("Admin status result:", adminStatus); // Debug log
         
         if (!adminStatus) {
           try {
             // Try to make the user admin
+            console.log("Attempting to make user admin"); // Debug log
             const madeAdmin = await makeUserAdmin(user.id);
+            console.log("Make admin result:", madeAdmin); // Debug log
+            
             if (!madeAdmin) {
+              console.log("Failed to make admin, showing toast and redirecting"); // Debug log
               toast({
                 title: "Access Denied",
                 description: "You don't have permission to access this page.",
@@ -113,9 +129,11 @@ export default function AdminPage() {
             return;
           }
         } else {
+          console.log("User is admin, setting state"); // Debug log
           setIsAdmin(true);
         }
         
+        console.log("Loading medicines"); // Debug log
         await loadMedicines();
       } catch (error) {
         console.error("Error checking admin status:", error);
@@ -265,7 +283,7 @@ export default function AdminPage() {
         <Navbar />
         <main className="flex-1 container py-8 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-xl">Loading...</p>
+            <p className="text-xl">Loading admin dashboard...</p>
           </div>
         </main>
       </div>

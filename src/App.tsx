@@ -7,8 +7,17 @@ import Tracking from "./pages/Tracking";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
 import Admin from "./pages/Admin";
+import { useEffect } from "react";
+
+// Add console log for debugging
+console.log("App.tsx loaded, Admin component:", Admin);
 
 function App() {
+  // Add debugging to check if routes are properly set up
+  useEffect(() => {
+    console.log("Routes initialized");
+  }, []);
+  
   return (
     <>
       <Routes>
