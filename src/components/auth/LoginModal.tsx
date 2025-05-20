@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface LoginModalProps {
   open: boolean;
@@ -31,19 +33,27 @@ export default function LoginModal({ open, onOpenChange }: LoginModalProps) {
   const [name, setName] = useState("");
   
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setAuthError(null);
     
     try {
       await signIn(loginEmail, loginPassword);
       toast.success("Signed in successfully");
       onOpenChange(false);
-    } catch (error) {
-      toast.error("Failed to sign in");
-      console.error(error);
+    } catch (error: any) {
+      console.error("Error signing in:", error);
+      
+      // Handle specific authentication errors
+      if (error?.code === "email_not_confirmed") {
+        setAuthError("Please verify your email address. Check your inbox for a confirmation email.");
+      } else {
+        toast.error(error.message || "Failed to sign in");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -58,10 +68,11 @@ export default function LoginModal({ open, onOpenChange }: LoginModalProps) {
     }
     
     setIsLoading(true);
+    setAuthError(null);
     
     try {
       await signUp(signupEmail, signupPassword, name);
-      toast.success("Account created successfully! You can now sign in.");
+      toast.success("Account created successfully! Please check your email to verify your account before signing in.");
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
@@ -74,11 +85,12 @@ export default function LoginModal({ open, onOpenChange }: LoginModalProps) {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
+      setAuthError(null);
       await signInWithGoogle();
       toast.success("Signed in with Google");
       onOpenChange(false);
-    } catch (error) {
-      toast.error("Failed to sign in with Google");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to sign in with Google");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -102,6 +114,13 @@ export default function LoginModal({ open, onOpenChange }: LoginModalProps) {
           </TabsList>
           
           <TabsContent value="login" className="space-y-4 pt-4">
+            {authError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="ml-2">{authError}</AlertDescription>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

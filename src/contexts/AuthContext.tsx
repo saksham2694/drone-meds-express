@@ -91,7 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        // Add the error code for easier handling in components
+        const enhancedError = new Error(error.message);
+        Object.assign(enhancedError, { code: error.code });
+        throw enhancedError;
+      }
     } catch (error) {
       console.error('Error signing in:', error);
       throw error;

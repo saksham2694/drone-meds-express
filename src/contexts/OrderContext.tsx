@@ -109,19 +109,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       const eta = Math.floor(Math.random() * 21) + 10;
 
       // Fix: Define the order data with the correct types expected by Supabase
-      const newOrder = {
-        user_id: user.id,
-        items: items as unknown as Json, // Cast to Json type for Supabase
-        status: "processing",
-        total: total,
-        address: address as unknown as Json, // Cast to Json type for Supabase
-        delivery_progress: 0,
-        eta: eta,
-      };
-
+      // We need to use an array for insertion, not a single object
       const { data, error } = await supabase
         .from("orders")
-        .insert(newOrder)
+        .insert([{
+          user_id: user.id,
+          items: items as unknown as Json, // Cast to Json type for Supabase
+          status: "processing",
+          total: total,
+          address: address as unknown as Json, // Cast to Json type for Supabase
+          delivery_progress: 0,
+          eta: eta,
+        }])
         .select()
         .single();
 
