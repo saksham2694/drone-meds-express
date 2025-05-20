@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import LoginModal from "@/components/auth/LoginModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { checkIsAdmin } from "@/services/medicineService";
+import ThemeToggle from "@/components/theme/ThemeToggle";
 
 export default function Navbar() {
   const { totalItems } = useCart();
@@ -54,10 +55,15 @@ export default function Navbar() {
               My Orders
             </Link>
           )}
-          {/* Removed admin link from navbar */}
+          <ThemeToggle />
         </nav>
 
         <div className="flex items-center gap-4">
+          {/* Mobile theme toggle */}
+          <div className="md:hidden">
+            <ThemeToggle />
+          </div>
+          
           <Link to="/cart" className="relative">
             <Button variant="ghost" size="icon">
               <ShoppingCart className="h-5 w-5" />

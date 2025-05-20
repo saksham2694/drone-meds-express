@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
 import Admin from "./pages/Admin";
 import { useEffect } from "react";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Add console log for debugging
 console.log("App.tsx loaded, Admin component:", Admin);
@@ -19,7 +20,7 @@ function App() {
   }, []);
   
   return (
-    <>
+    <ThemeProvider>
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/cart" element={<Cart />} />
@@ -29,7 +30,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
-    </>
+    </ThemeProvider>
   );
 }
 
