@@ -56,7 +56,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       items: itemsArray,
       status: data.status,
       total: data.total,
-      createdAt: new Date(data.created_at),
+      createdAt: new Date(data.created_at).toISOString(), // Convert Date to string
       address: data.address as Address,
       deliveryProgress: data.delivery_progress,
       eta: data.eta,
@@ -118,6 +118,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
         eta,
       };
 
+      // Fix: Use an array with a single object for insertion
       const { data, error } = await supabase
         .from("orders")
         .insert([newOrder])
