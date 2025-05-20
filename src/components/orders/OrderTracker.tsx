@@ -142,7 +142,7 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
     // Load Google Maps API if not already loaded
     if (!window.google) {
       const script = document.createElement("script");
-      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyD2vOÖl75JQfXI44rg4cLfYT40-q47lXBU&callback=initMap&v=weekly&orderId=" + order.id;
+      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyDhDDZygiS6I_66ovUS12bmnlmhfBHTVbw&callback=initMap&v=weekly&orderId=" + order.id;
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);

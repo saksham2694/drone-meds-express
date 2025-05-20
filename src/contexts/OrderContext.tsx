@@ -108,7 +108,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       // Generate a random ETA (10-30 minutes)
       const eta = Math.floor(Math.random() * 21) + 10;
 
-      // Fix the insert operation to work with Supabase's expected format
+      // Insert data with the correct format
       const { data, error } = await supabase
         .from("orders")
         .insert({

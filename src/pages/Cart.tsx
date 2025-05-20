@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -119,7 +118,7 @@ export default function Cart() {
     // Load Google Maps API if not already loaded
     if (!window.google) {
       const script = document.createElement("script");
-      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyD2vOÖl75JQfXI44rg4cLfYT40-q47lXBU&libraries=places&callback=initAutocomplete";
+      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyDhDDZygiS6I_66ovUS12bmnlmhfBHTVbw&libraries=places&callback=initAutocomplete";
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
