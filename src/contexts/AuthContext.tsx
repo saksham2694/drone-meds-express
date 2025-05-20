@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -97,6 +98,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      // Clean up existing state
+      cleanupAuthState();
+      // Attempt global sign out
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continue even if this fails
+      }
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { 
+            name
+          }
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
+    }
+  };
+
   const signInWithGoogle = async () => {
     try {
       // Clean up existing state
@@ -136,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isLoading,
       signIn,
+      signUp,
       signInWithGoogle,
       signOut,
     }}>

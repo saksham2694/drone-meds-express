@@ -1,122 +1,112 @@
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Order, CartItem, Address } from '@/types';
+import { useState, createContext, useContext, useEffect, ReactNode } from 'react';
+import { CartItem, Order } from '@/types';
 import { useAuth } from './AuthContext';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface OrderContextType {
   orders: Order[];
-  currentOrder: Order | null;
-  createOrder: (items: CartItem[], address: Address) => Promise<Order>;
-  getOrderById: (id: string) => Order | undefined;
+  placeOrder: (items: CartItem[], address: any) => Promise<Order>;
+  simulateDelivery: (orderId: string) => void;
+  isLoading: boolean;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const { user } = useAuth();
 
-  // Load orders from Supabase on initial load
+  // Fetch orders from Supabase
   useEffect(() => {
-    if (user) {
-      const fetchOrders = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
+    const fetchOrders = async () => {
+      if (!user) return;
+      
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
 
-          if (error) {
-            console.error('Error fetching orders:', error);
-            return;
-          }
-
-          if (data) {
-            // Transform the snake_case column names to camelCase for our frontend
-            const transformedOrders = data.map(order => ({
-              id: order.id,
-              userId: order.user_id,
-              items: order.items,
-              total: order.total,
-              status: order.status,
-              createdAt: order.created_at,
-              address: order.address,
-              eta: order.eta,
-              deliveryProgress: order.delivery_progress
-            })) as Order[];
-            
-            setOrders(transformedOrders);
-          }
-        } catch (error) {
-          console.error('Failed to fetch orders', error);
+        if (error) {
+          console.error('Error fetching orders:', error);
+          return;
         }
-      };
 
-      fetchOrders();
-
-      // Fallback to localStorage if Supabase fetch fails
-      const savedOrders = localStorage.getItem(`orders-${user.id}`);
-      if (savedOrders) {
-        try {
-          setOrders(JSON.parse(savedOrders));
-        } catch (error) {
-          console.error('Failed to parse orders from localStorage', error);
+        if (data) {
+          // Transform the snake_case column names to camelCase for our frontend
+          const transformedOrders = data.map(order => ({
+            id: order.id,
+            userId: order.user_id,
+            items: order.items as unknown as CartItem[],
+            total: order.total,
+            status: order.status,
+            createdAt: order.created_at,
+            address: order.address,
+            eta: order.eta,
+            deliveryProgress: order.delivery_progress
+          }));
+          
+          setOrders(transformedOrders);
         }
+      } catch (error) {
+        console.error('Failed to fetch orders', error);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+
+    fetchOrders();
   }, [user]);
 
-  // Save orders to localStorage as a backup
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`orders-${user.id}`, JSON.stringify(orders));
-    }
-  }, [orders, user]);
+  // Simulate delivery progress
+  const simulateDelivery = (orderId: string) => {
+    const orderIndex = orders.findIndex(order => order.id === orderId);
+    if (orderIndex === -1) return;
 
-  // Update current order progress
-  useEffect(() => {
-    if (currentOrder && currentOrder.status === 'in-transit') {
-      const interval = setInterval(() => {
-        setCurrentOrder(prevOrder => {
-          if (!prevOrder) return null;
+    const prevOrder = orders[orderIndex];
+    
+    // Only simulate delivery for orders in "processing" status
+    if (prevOrder.status !== 'processing') return;
+
+    // Start delivery simulation
+    const simulationInterval = setInterval(() => {
+      setOrders(prevOrders => {
+        const orderIndex = prevOrders.findIndex(order => order.id === orderId);
+        if (orderIndex === -1) {
+          clearInterval(simulationInterval);
+          return prevOrders;
+        }
+
+        const prevOrder = prevOrders[orderIndex];
+        const newProgress = Math.min(prevOrder.deliveryProgress + 10, 100);
+        
+        // Create a new order with updated progress
+        const updatedOrder = {
+          ...prevOrder,
+          deliveryProgress: newProgress,
+          status: newProgress === 100 ? 'delivered' : prevOrder.status
+        };
+
+        // If delivery is complete, mark as delivered and stop the simulation
+        if (newProgress === 100) {
+          clearInterval(simulationInterval);
           
-          const newProgress = prevOrder.deliveryProgress + 1;
-          
-          if (newProgress >= 100) {
-            // Order delivered
-            const updatedOrder = {
-              ...prevOrder,
-              deliveryProgress: 100,
-              status: 'delivered' as const
-            };
-            
-            // Update in Supabase
-            supabase
-              .from('orders')
-              .update({ 
-                delivery_progress: 100, 
-                status: 'delivered' 
-              })
-              .eq('id', updatedOrder.id)
-              .then(({ error }) => {
-                if (error) console.error('Failed to update order in Supabase', error);
-              });
-            
-            // Update in orders list
-            setOrders(prevOrders => 
-              prevOrders.map(order => 
-                order.id === updatedOrder.id ? updatedOrder : order
-              )
-            );
-            
-            toast.success("Your order has been delivered!");
-            return updatedOrder;
-          }
-          
+          // Update status in Supabase
+          supabase
+            .from('orders')
+            .update({ 
+              delivery_progress: 100, 
+              status: 'delivered' 
+            })
+            .eq('id', updatedOrder.id)
+            .then(({ error }) => {
+              if (error) console.error('Failed to update order status in Supabase', error);
+            });
+        } else {
           // Update progress in Supabase
           supabase
             .from('orders')
@@ -125,19 +115,18 @@ export function OrderProvider({ children }: { children: ReactNode }) {
             .then(({ error }) => {
               if (error) console.error('Failed to update order progress in Supabase', error);
             });
-          
-          return {
-            ...prevOrder,
-            deliveryProgress: newProgress
-          };
-        });
-      }, 1000); // Update every second for demo
-      
-      return () => clearInterval(interval);
-    }
-  }, [currentOrder]);
+        }
 
-  const createOrder = async (items: CartItem[], address: Address): Promise<Order> => {
+        // Update orders in state
+        const newOrders = [...prevOrders];
+        newOrders[orderIndex] = updatedOrder;
+        return newOrders;
+      });
+    }, 2000); // Update every 2 seconds
+  };
+
+  // Place a new order
+  const placeOrder = async (items: CartItem[], address: any) => {
     if (!user) throw new Error('User must be logged in to place an order');
     
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -151,7 +140,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       userId: user.id,
       items,
       total,
-      status: 'in-transit',
+      status: 'processing',
       createdAt: new Date().toISOString(),
       address,
       eta,
@@ -176,38 +165,30 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       
       if (error) {
         console.error('Failed to save order to Supabase', error);
-        // Fallback to local state only if Supabase insert fails
+        throw error;
       }
+      
+      // Update local state
+      setOrders(prev => [newOrder, ...prev]);
+      
+      return newOrder;
     } catch (error) {
-      console.error('Error creating order in Supabase', error);
+      console.error('Error placing order:', error);
+      throw error;
     }
-    
-    setOrders(prevOrders => [...prevOrders, newOrder]);
-    setCurrentOrder(newOrder);
-    
-    return newOrder;
-  };
-
-  const getOrderById = (id: string) => {
-    return orders.find(order => order.id === id);
   };
 
   return (
-    <OrderContext.Provider value={{
-      orders,
-      currentOrder,
-      createOrder,
-      getOrderById,
-    }}>
+    <OrderContext.Provider value={{ orders, placeOrder, simulateDelivery, isLoading }}>
       {children}
     </OrderContext.Provider>
   );
 }
 
-export function useOrders() {
+export const useOrders = () => {
   const context = useContext(OrderContext);
   if (context === undefined) {
     throw new Error('useOrders must be used within an OrderProvider');
   }
   return context;
-}
+};
