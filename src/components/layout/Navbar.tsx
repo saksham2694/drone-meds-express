@@ -4,13 +4,14 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Menu, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import LoginModal from "@/components/auth/LoginModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { checkIsAdmin } from "@/services/medicineService";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function Navbar() {
   const { totalItems } = useCart();
@@ -20,6 +21,7 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -60,6 +62,7 @@ export default function Navbar() {
           </Link>
         </div>
 
+        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6 text-sm">
           <Link to="/" className="font-medium transition-colors hover:text-primary">
             Home
@@ -72,10 +75,40 @@ export default function Navbar() {
           <ThemeToggle />
         </nav>
 
-        <div className="flex items-center gap-4">
-          {/* Mobile theme toggle */}
+        {/* Mobile & Desktop Actions */}
+        <div className="flex items-center gap-2">
+          {/* Mobile menu button */}
           <div className="md:hidden">
-            <ThemeToggle />
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="mr-2">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[250px] sm:w-[300px]">
+                <div className="flex flex-col gap-4 px-2 py-6">
+                  <Link 
+                    to="/" 
+                    className="flex items-center gap-2 py-2 font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Home
+                  </Link>
+                  {user && (
+                    <Link 
+                      to="/orders" 
+                      className="flex items-center gap-2 py-2 font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      My Orders
+                    </Link>
+                  )}
+                  <div className="py-2">
+                    <ThemeToggle />
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
           
           <Link to="/cart" className="relative">
@@ -91,10 +124,7 @@ export default function Navbar() {
 
           {user ? (
             <div className="flex items-center gap-2">
-              {!isMobile && (
-                <span className="text-sm font-medium">{user.name}</span>
-              )}
-              <Avatar>
+              <Avatar className="h-8 w-8">
                 <AvatarImage 
                   src={user.photoURL} 
                   alt={user.name} 
@@ -106,17 +136,29 @@ export default function Navbar() {
                   {user.name?.substring(0, 2).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
+              
               <Button
                 variant="ghost"
                 size="sm"
+                className="hidden md:inline-flex"
                 onClick={() => signOut()}
               >
-                {isMobile ? "Logout" : "Sign out"}
+                Sign out
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden"
+                onClick={() => signOut()}
+              >
+                <X className="h-5 w-5" />
               </Button>
             </div>
           ) : (
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setShowLoginModal(true)}
             >
               Sign In
@@ -124,9 +166,9 @@ export default function Navbar() {
           )}
 
           {isAdmin && (
-            <Link to="/admin">
+            <Link to="/admin" className="hidden md:block">
               <Button variant="outline" size="sm">
-                Admin Dashboard
+                Admin
               </Button>
             </Link>
           )}
