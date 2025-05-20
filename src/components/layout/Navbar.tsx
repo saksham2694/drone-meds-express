@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,25 @@ import { ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
 import LoginModal from "@/components/auth/LoginModal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { checkIsAdmin } from "@/services/medicineService";
 
 export default function Navbar() {
   const { totalItems } = useCart();
   const { user, signOut } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isMobile = useIsMobile();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (user) {
+        const adminStatus = await checkIsAdmin(user.id);
+        setIsAdmin(adminStatus);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user]);
 
   return (
     <header className="sticky top-0 w-full border-b bg-background/95 backdrop-blur z-30">
@@ -42,6 +55,11 @@ export default function Navbar() {
           {user && (
             <Link to="/orders" className="font-medium transition-colors hover:text-primary">
               My Orders
+            </Link>
+          )}
+          {isAdmin && (
+            <Link to="/admin" className="font-medium transition-colors hover:text-primary text-primary">
+              Admin
             </Link>
           )}
         </nav>

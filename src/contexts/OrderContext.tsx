@@ -1,12 +1,12 @@
 
 import { useState, createContext, useContext, useEffect, ReactNode } from 'react';
-import { CartItem, Order } from '@/types';
+import { CartItem, Order, Address } from '@/types';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface OrderContextType {
   orders: Order[];
-  placeOrder: (items: CartItem[], address: any) => Promise<Order>;
+  placeOrder: (items: CartItem[], address: Address) => Promise<Order>;
   simulateDelivery: (orderId: string) => void;
   isLoading: boolean;
 }
@@ -41,11 +41,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           const transformedOrders = data.map(order => ({
             id: order.id,
             userId: order.user_id,
-            items: order.items as unknown as CartItem[],
+            items: order.items as CartItem[],
             total: order.total,
             status: order.status === 'processing' ? 'pending' : order.status as "pending" | "in-transit" | "delivered",
             createdAt: order.created_at,
-            address: order.address,
+            address: order.address as unknown as Address,
             eta: order.eta,
             deliveryProgress: order.delivery_progress
           })) as Order[];
@@ -126,7 +126,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   };
 
   // Place a new order
-  const placeOrder = async (items: CartItem[], address: any) => {
+  const placeOrder = async (items: CartItem[], address: Address) => {
     if (!user) throw new Error('User must be logged in to place an order');
     
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);

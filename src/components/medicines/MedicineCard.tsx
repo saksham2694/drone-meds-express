@@ -42,7 +42,7 @@ export default function MedicineCard({ medicine }: MedicineCardProps) {
           onError={handleImageError}
         />
         <Badge className="absolute top-2 right-2 bg-primary">
-          ${medicine.price.toFixed(2)}
+          ₹{medicine.price.toFixed(2)}
         </Badge>
       </div>
       <CardContent className="pt-4 flex-grow">

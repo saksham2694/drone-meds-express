@@ -1,98 +1,192 @@
 
+import { supabase } from '@/integrations/supabase/client';
 import { Medicine } from '@/types';
 
-// Mock medicines data (will be replaced with Supabase data)
-const medicines: Medicine[] = [
-  {
-    id: '1',
-    name: 'Paracetamol',
-    description: 'Pain reliever and fever reducer',
-    price: 5.99,
-    imageUrl: '/medicines/paracetamol.jpg',
-    category: 'Pain Relief',
-  },
-  {
-    id: '2',
-    name: 'Ibuprofen',
-    description: 'Anti-inflammatory pain relief',
-    price: 6.99,
-    imageUrl: '/medicines/ibuprofen.jpg',
-    category: 'Pain Relief',
-  },
-  {
-    id: '3',
-    name: 'Cetirizine',
-    description: 'Antihistamine for allergy relief',
-    price: 8.49,
-    imageUrl: '/medicines/cetirizine.jpg',
-    category: 'Allergy',
-  },
-  {
-    id: '4',
-    name: 'Amoxicillin',
-    description: 'Antibiotic for bacterial infections',
-    price: 12.99,
-    imageUrl: '/medicines/amoxicillin.jpg',
-    category: 'Antibiotics',
-  },
-  {
-    id: '5',
-    name: 'Omeprazole',
-    description: 'Reduces stomach acid production',
-    price: 9.99,
-    imageUrl: '/medicines/omeprazole.jpg',
-    category: 'Digestive Health',
-  },
-  {
-    id: '6',
-    name: 'Loratadine',
-    description: 'Non-drowsy allergy relief',
-    price: 7.49,
-    imageUrl: '/medicines/loratadine.jpg',
-    category: 'Allergy',
-  },
-  {
-    id: '7',
-    name: 'Aspirin',
-    description: 'Pain reliever, anti-inflammatory',
-    price: 4.99,
-    imageUrl: '/medicines/aspirin.jpg',
-    category: 'Pain Relief',
-  },
-  {
-    id: '8',
-    name: 'Vitamin D3',
-    description: 'Supports bone and immune health',
-    price: 11.99,
-    imageUrl: '/medicines/vitamind.jpg',
-    category: 'Vitamins',
-  }
-];
-
-// Get all medicines
+// Get all medicines from Supabase
 export const getAllMedicines = async (): Promise<Medicine[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return medicines;
+  const { data, error } = await supabase
+    .from('medicines')
+    .select('*');
+
+  if (error) {
+    console.error('Error fetching medicines:', error);
+    throw error;
+  }
+
+  // Map the data from Supabase to our Medicine type
+  return data.map(item => ({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    imageUrl: item.image_url,
+    category: item.category
+  }));
 };
 
-// Get medicine by ID
+// Get medicine by ID from Supabase
 export const getMedicineById = async (id: string): Promise<Medicine | undefined> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return medicines.find(medicine => medicine.id === id);
+  const { data, error } = await supabase
+    .from('medicines')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching medicine:', error);
+    return undefined;
+  }
+
+  if (!data) return undefined;
+
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    price: data.price,
+    imageUrl: data.image_url,
+    category: data.category
+  };
 };
 
-// Get medicines by category
+// Get medicines by category from Supabase
 export const getMedicinesByCategory = async (category: string): Promise<Medicine[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 400));
-  return medicines.filter(medicine => medicine.category === category);
+  const { data, error } = await supabase
+    .from('medicines')
+    .select('*')
+    .eq('category', category);
+
+  if (error) {
+    console.error('Error fetching medicines by category:', error);
+    throw error;
+  }
+
+  return data.map(item => ({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    imageUrl: item.image_url,
+    category: item.category
+  }));
 };
 
-// Get all categories
+// Get all categories from Supabase
 export const getAllCategories = async (): Promise<string[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return Array.from(new Set(medicines.map(medicine => medicine.category)));
+  const { data, error } = await supabase
+    .from('medicines')
+    .select('category');
+
+  if (error) {
+    console.error('Error fetching categories:', error);
+    throw error;
+  }
+
+  // Extract unique categories
+  return Array.from(new Set(data.map(item => item.category)));
+};
+
+// Admin functions
+export const addMedicine = async (medicine: Omit<Medicine, 'id'>): Promise<Medicine> => {
+  const { data, error } = await supabase
+    .from('medicines')
+    .insert({
+      name: medicine.name,
+      description: medicine.description,
+      price: medicine.price,
+      image_url: medicine.imageUrl,
+      category: medicine.category
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding medicine:', error);
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    price: data.price,
+    imageUrl: data.image_url,
+    category: data.category
+  };
+};
+
+export const updateMedicine = async (medicine: Medicine): Promise<Medicine> => {
+  const { data, error } = await supabase
+    .from('medicines')
+    .update({
+      name: medicine.name,
+      description: medicine.description,
+      price: medicine.price,
+      image_url: medicine.imageUrl,
+      category: medicine.category
+    })
+    .eq('id', medicine.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating medicine:', error);
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    price: data.price,
+    imageUrl: data.image_url,
+    category: data.category
+  };
+};
+
+export const deleteMedicine = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('medicines')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting medicine:', error);
+    throw error;
+  }
+};
+
+// Check if user is admin
+export const checkIsAdmin = async (userId: string): Promise<boolean> => {
+  if (!userId) return false;
+  
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'admin');
+
+  if (error) {
+    console.error('Error checking admin status:', error);
+    return false;
+  }
+
+  return data && data.length > 0;
+};
+
+// Make user an admin (first user only)
+export const makeUserAdmin = async (userId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('user_roles')
+      .insert({
+        user_id: userId,
+        role: 'admin'
+      });
+
+    return !error;
+  } catch (error) {
+    console.error('Error making user admin:', error);
+    return false;
+  }
 };
