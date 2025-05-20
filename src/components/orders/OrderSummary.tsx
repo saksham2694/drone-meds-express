@@ -2,6 +2,7 @@
 import { Order } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { IndianRupee } from "lucide-react";
 
 interface OrderSummaryProps {
   order: Order;
@@ -20,8 +21,9 @@ export default function OrderSummary({ order }: OrderSummaryProps) {
               <span>
                 {item.name} x {item.quantity}
               </span>
-              <span className="font-medium">
-                ${(item.price * item.quantity).toFixed(2)}
+              <span className="font-medium flex items-center">
+                <IndianRupee className="h-3.5 w-3.5 mr-0.5" />
+                {(item.price * item.quantity).toFixed(2)}
               </span>
             </div>
           ))}
@@ -30,7 +32,10 @@ export default function OrderSummary({ order }: OrderSummaryProps) {
           
           <div className="flex justify-between font-semibold">
             <span>Total</span>
-            <span>${order.total.toFixed(2)}</span>
+            <span className="flex items-center">
+              <IndianRupee className="h-4 w-4 mr-0.5" />
+              {order.total.toFixed(2)}
+            </span>
           </div>
           
           <div className="pt-2 text-xs text-muted-foreground">

@@ -32,6 +32,10 @@ export default function Index() {
                   alt="Medicine Drone Delivery"
                   className="max-w-full h-auto rounded shadow-lg animate-drone-fly"
                   style={{ maxHeight: "300px" }}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = "https://placehold.co/600x400?text=Drone+Delivery";
+                  }}
                 />
               </div>
             </div>

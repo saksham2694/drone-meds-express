@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import LoginModal from "@/components/auth/LoginModal";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, IndianRupee } from "lucide-react";
 
 export default function Orders() {
   const { orders } = useOrders();
@@ -130,8 +130,8 @@ export default function Orders() {
                         </div>
                       </div>
                       <div className="flex flex-col md:items-end justify-between">
-                        <div className="font-semibold">
-                          Total: ${order.total.toFixed(2)}
+                        <div className="font-semibold flex items-center">
+                          Total: <IndianRupee className="h-3.5 w-3.5 ml-1 mr-0.5" />{order.total.toFixed(2)}
                         </div>
                         <Link to={`/tracking/${order.id}`}>
                           <Button

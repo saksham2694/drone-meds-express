@@ -4,7 +4,6 @@ import Index from "./pages/Index";
 import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import Tracking from "./pages/Tracking";
-import Categories from "./pages/Categories";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
 import Admin from "./pages/Admin";
@@ -17,7 +16,6 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/tracking/:orderId" element={<Tracking />} />
-        <Route path="/categories" element={<Categories />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
