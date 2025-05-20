@@ -54,11 +54,7 @@ export default function Navbar() {
               My Orders
             </Link>
           )}
-          {isAdmin && (
-            <Link to="/admin" className="font-medium transition-colors hover:text-primary text-primary">
-              Admin
-            </Link>
-          )}
+          {/* Removed admin link from navbar */}
         </nav>
 
         <div className="flex items-center gap-4">

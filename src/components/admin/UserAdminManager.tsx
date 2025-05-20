@@ -65,13 +65,11 @@ export default function UserAdminManager() {
             </p>
             <div className="flex flex-col gap-2">
               <Input
-                placeholder="User ID (from Supabase auth.users table)"
+                placeholder=""
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
               />
-              <div className="text-xs text-muted-foreground">
-                Note: You can find user IDs in the Supabase dashboard under Authentication &gt; Users.
-              </div>
+              {/* Removed the note about finding user IDs */}
             </div>
           </div>
           <Button type="submit" disabled={isSubmitting}>
