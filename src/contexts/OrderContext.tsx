@@ -105,8 +105,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
         0
       );
 
-      // Generate a random ETA (10-30 minutes)
-      const eta = Math.floor(Math.random() * 21) + 10;
+      // Set fixed delivery time to 5 minutes
+      const eta = 5;
       
       // Generate a UUID for the order
       const orderId = crypto.randomUUID();

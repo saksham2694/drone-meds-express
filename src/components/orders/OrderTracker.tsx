@@ -18,14 +18,49 @@ declare global {
 
 export default function OrderTracker({ order }: OrderTrackerProps) {
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [progress, setProgress] = useState(order.deliveryProgress);
   const mapRef = useRef<HTMLDivElement>(null);
   
-  // Calculate remaining time based on progress
-  const remainingMinutes = Math.ceil(order.eta * (1 - order.deliveryProgress / 100));
-
   // Fixed pharmacy location (starting point)
-  const PHARMACY_LOCATION = { lat: 19.0760, lng: 72.8777 }; // Mumbai coordinates
+  const PHARMACY_LOCATION = { lat: 30.6425, lng: 76.8173 }; // Amity University, Mohali, Punjab
   const PHARMACY_NAME = "MediDrone Pharmacy HQ";
+  
+  // Calculate remaining time based on progress and 5-minute delivery time
+  const DELIVERY_TIME_MINUTES = 5;
+  const remainingMinutes = Math.ceil(DELIVERY_TIME_MINUTES * (1 - progress / 100));
+
+  // Update progress in real-time
+  useEffect(() => {
+    // Only run this for orders that aren't delivered yet
+    if (order.status === 'delivered' || progress >= 100) return;
+    
+    const startTime = new Date(order.createdAt).getTime();
+    const deliveryTimeMs = DELIVERY_TIME_MINUTES * 60 * 1000; // 5 minutes in milliseconds
+    const endTime = startTime + deliveryTimeMs;
+    
+    const updateProgress = () => {
+      const currentTime = Date.now();
+      
+      // If delivery time has passed, set progress to 100%
+      if (currentTime >= endTime) {
+        setProgress(100);
+        return;
+      }
+      
+      // Calculate progress as percentage of time elapsed
+      const elapsed = currentTime - startTime;
+      const calculatedProgress = Math.min(Math.floor((elapsed / deliveryTimeMs) * 100), 100);
+      setProgress(calculatedProgress);
+    };
+    
+    // Update progress immediately
+    updateProgress();
+    
+    // Set interval to update progress every second
+    const interval = setInterval(updateProgress, 1000);
+    
+    return () => clearInterval(interval);
+  }, [order.createdAt, order.status, progress]);
 
   useEffect(() => {
     // Define the callback function for the Google Maps API
@@ -48,7 +83,7 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
               lat: (PHARMACY_LOCATION.lat + destinationLocation.lat()) / 2,
               lng: (PHARMACY_LOCATION.lng + destinationLocation.lng()) / 2
             },
-            zoom: 12,
+            zoom: 10,
             mapTypeControl: false,
           });
           
@@ -111,15 +146,14 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
                 directionsRenderer.setDirections(result);
                 
                 // Calculate drone position along the route based on progress
-                if (order.status === "in-transit" && order.deliveryProgress > 0) {
+                if (progress > 0 && progress < 100) {
                   const route = result.routes[0].overview_path;
-                  const progress = order.deliveryProgress / 100;
-                  const index = Math.floor(progress * route.length);
+                  const progressValue = progress / 100;
+                  const index = Math.floor(progressValue * route.length);
                   
                   // Add drone marker
                   const dronePosition = route[Math.min(index, route.length - 1)];
                   
-                  // Add drone marker
                   const droneMarker = new window.google.maps.Marker({
                     position: dronePosition,
                     map: map,
@@ -130,6 +164,16 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
                     title: "Delivery Drone",
                   });
                 }
+                
+                // Fit the map bounds to include both markers
+                const bounds = new window.google.maps.LatLngBounds();
+                bounds.extend(PHARMACY_LOCATION);
+                bounds.extend(destinationLocation);
+                map.fitBounds(bounds);
+                
+                // Add some padding
+                const padding = { top: 50, right: 50, bottom: 50, left: 50 };
+                map.fitBounds(bounds, padding);
               }
             }
           );
@@ -142,7 +186,7 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
     // Load Google Maps API if not already loaded
     if (!window.google) {
       const script = document.createElement("script");
-      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyDhDDZygiS6I_66ovUS12bmnlmhfBHTVbw&callback=initMap&v=weekly&orderId=" + order.id;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDhDDZygiS6I_66ovUS12bmnlmhfBHTVbw&callback=initMap&v=weekly&orderId=${order.id}`;
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
@@ -153,7 +197,10 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
     } else if (window.google.maps) {
       window.initMap(order.id);
     }
-  }, [order.id, order.deliveryProgress, order.status]);
+  }, [order.id, progress, order.address]);
+
+  // Determine order status based on progress
+  const orderStatus = progress >= 100 ? 'delivered' : progress > 0 ? 'in-transit' : 'processing';
 
   return (
     <Card className="p-6">
@@ -166,16 +213,16 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
         </div>
         <Badge
           variant={
-            order.status === 'delivered'
+            orderStatus === 'delivered'
               ? 'default'
-              : order.status === 'in-transit'
+              : orderStatus === 'in-transit'
               ? 'secondary'
               : 'outline'
           }
         >
-          {order.status === 'delivered'
+          {orderStatus === 'delivered'
             ? 'Delivered'
-            : order.status === 'in-transit'
+            : orderStatus === 'in-transit'
             ? 'In Transit'
             : 'Processing'}
         </Badge>
@@ -185,9 +232,9 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
         <div>
           <div className="flex justify-between mb-2">
             <span className="text-sm font-medium">Delivery Progress</span>
-            <span className="text-sm font-medium">{order.deliveryProgress}%</span>
+            <span className="text-sm font-medium">{Math.round(progress)}%</span>
           </div>
-          <Progress value={order.deliveryProgress} className="h-2" />
+          <Progress value={progress} className="h-2" />
         </div>
 
         <div className="relative overflow-hidden rounded-lg" style={{ height: "250px" }}>
@@ -200,7 +247,7 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
           )}
         </div>
 
-        {order.status === 'in-transit' && (
+        {orderStatus === 'in-transit' && (
           <div className="text-center">
             <p className="text-sm">
               Estimated arrival in{' '}
@@ -211,7 +258,7 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
           </div>
         )}
 
-        {order.status === 'delivered' && (
+        {orderStatus === 'delivered' && (
           <div className="text-center font-medium text-green-600">
             Order delivered successfully!
           </div>
