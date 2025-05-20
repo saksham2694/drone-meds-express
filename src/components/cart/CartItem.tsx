@@ -23,13 +23,18 @@ export default function CartItemComponent({ item }: CartItemProps) {
     updateQuantity(item.id, value);
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://placehold.co/100x100?text=Medicine';
+  };
+
   return (
     <div className={`flex border-b py-4 ${isRemoving ? 'opacity-50' : ''} transition-opacity`}>
       <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md bg-secondary">
         <img
-          src={item.imageUrl || 'https://placehold.co/100x100?text=Medicine'}
+          src={item.imageUrl}
           alt={item.name}
           className="h-full w-full object-cover object-center"
+          onError={handleImageError}
         />
       </div>
 

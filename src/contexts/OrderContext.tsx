@@ -43,12 +43,12 @@ export function OrderProvider({ children }: { children: ReactNode }) {
             userId: order.user_id,
             items: order.items as unknown as CartItem[],
             total: order.total,
-            status: order.status,
+            status: order.status === 'processing' ? 'pending' : order.status as "pending" | "in-transit" | "delivered",
             createdAt: order.created_at,
             address: order.address,
             eta: order.eta,
             deliveryProgress: order.delivery_progress
-          }));
+          })) as Order[];
           
           setOrders(transformedOrders);
         }
@@ -69,8 +69,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
     const prevOrder = orders[orderIndex];
     
-    // Only simulate delivery for orders in "processing" status
-    if (prevOrder.status !== 'processing') return;
+    // Only simulate delivery for orders in "pending" status
+    if (prevOrder.status !== 'pending') return;
 
     // Start delivery simulation
     const simulationInterval = setInterval(() => {
@@ -140,7 +140,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       userId: user.id,
       items,
       total,
-      status: 'processing',
+      status: 'pending',
       createdAt: new Date().toISOString(),
       address,
       eta,

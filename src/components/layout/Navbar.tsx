@@ -24,6 +24,9 @@ export default function Navbar() {
               src="/drone-icon.png" 
               alt="MediDrone Logo"
               className="h-8 w-8"
+              onError={(e) => {
+                e.currentTarget.src = 'https://placehold.co/32x32?text=MD';
+              }}
             />
             <span className="text-xl font-semibold text-primary">MediDrone</span>
           </Link>
@@ -61,7 +64,13 @@ export default function Navbar() {
                 <span className="text-sm font-medium">{user.name}</span>
               )}
               <Avatar>
-                <AvatarImage src={user.photoURL} alt={user.name} />
+                <AvatarImage 
+                  src={user.photoURL} 
+                  alt={user.name} 
+                  onError={(e) => {
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+                  }}
+                />
                 <AvatarFallback>
                   {user.name?.substring(0, 2).toUpperCase() || "U"}
                 </AvatarFallback>

@@ -27,14 +27,19 @@ export default function MedicineCard({ medicine }: MedicineCardProps) {
     }, 500);
   };
 
+  // Function to handle image errors
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://placehold.co/300x200?text=Medicine';
+  };
+
   return (
     <Card className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
       <div className="relative h-48 overflow-hidden bg-secondary">
-        {/* Placeholder image */}
         <img
-          src={medicine.imageUrl || 'https://placehold.co/300x200?text=Medicine'}
+          src={medicine.imageUrl}
           alt={medicine.name}
           className="h-full w-full object-cover object-center"
+          onError={handleImageError}
         />
         <Badge className="absolute top-2 right-2 bg-primary">
           ${medicine.price.toFixed(2)}
