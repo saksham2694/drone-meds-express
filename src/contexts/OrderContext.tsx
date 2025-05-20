@@ -27,8 +27,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           const { data, error } = await supabase
             .from('orders')
             .select('*')
-            .eq('userId', user.id)
-            .order('createdAt', { ascending: false });
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
           if (error) {
             console.error('Error fetching orders:', error);
@@ -36,7 +36,20 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           }
 
           if (data) {
-            setOrders(data as Order[]);
+            // Transform the snake_case column names to camelCase for our frontend
+            const transformedOrders = data.map(order => ({
+              id: order.id,
+              userId: order.user_id,
+              items: order.items,
+              total: order.total,
+              status: order.status,
+              createdAt: order.created_at,
+              address: order.address,
+              eta: order.eta,
+              deliveryProgress: order.delivery_progress
+            })) as Order[];
+            
+            setOrders(transformedOrders);
           }
         } catch (error) {
           console.error('Failed to fetch orders', error);
@@ -85,7 +98,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
             supabase
               .from('orders')
               .update({ 
-                deliveryProgress: 100, 
+                delivery_progress: 100, 
                 status: 'delivered' 
               })
               .eq('id', updatedOrder.id)
@@ -107,7 +120,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           // Update progress in Supabase
           supabase
             .from('orders')
-            .update({ deliveryProgress: newProgress })
+            .update({ delivery_progress: newProgress })
             .eq('id', prevOrder.id)
             .then(({ error }) => {
               if (error) console.error('Failed to update order progress in Supabase', error);
@@ -130,8 +143,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const eta = 5; // 5 minutes ETA
     
+    // Use built-in crypto API to generate UUID instead of uuid package
+    const orderId = crypto.randomUUID();
+    
     const newOrder: Order = {
-      id: crypto.randomUUID(), // Use built-in crypto API instead of uuid package
+      id: orderId,
       userId: user.id,
       items,
       total,
@@ -143,10 +159,20 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     };
     
     try {
-      // Insert into Supabase
+      // Insert into Supabase with snake_case column names
       const { error } = await supabase
         .from('orders')
-        .insert(newOrder);
+        .insert({
+          id: newOrder.id,
+          user_id: newOrder.userId,
+          items: newOrder.items,
+          total: newOrder.total,
+          status: newOrder.status,
+          created_at: newOrder.createdAt,
+          address: newOrder.address,
+          eta: newOrder.eta,
+          delivery_progress: newOrder.deliveryProgress
+        });
       
       if (error) {
         console.error('Failed to save order to Supabase', error);
