@@ -83,73 +83,85 @@ export default function Orders() {
                   new Date(b.createdAt).getTime() -
                   new Date(a.createdAt).getTime()
               )
-              .map((order) => (
-                <Card key={order.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-lg font-semibold">
-                          Order #{order.id.substring(0, 8)}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(order.createdAt).toLocaleString()}
-                        </p>
+              .map((order) => {
+                // Calculate if order should be delivered based on creation time
+                const orderTime = new Date(order.createdAt).getTime();
+                const currentTime = Date.now();
+                const deliveryTimeMs = 5 * 60 * 1000; // 5 minutes in milliseconds
+                const isDelivered = currentTime - orderTime >= deliveryTimeMs;
+                
+                // Use the calculated status for display
+                const displayStatus = isDelivered ? 'delivered' : 
+                  (order.status === 'in-transit' ? 'in-transit' : 'processing');
+                
+                return (
+                  <Card key={order.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="text-lg font-semibold">
+                            Order #{order.id.substring(0, 8)}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(order.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            displayStatus === 'delivered'
+                              ? 'default'
+                              : displayStatus === 'in-transit'
+                              ? 'secondary'
+                              : 'outline'
+                          }
+                        >
+                          {displayStatus === 'delivered'
+                            ? 'Delivered'
+                            : displayStatus === 'in-transit'
+                            ? 'In Transit'
+                            : 'Processing'}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={
-                          order.status === 'delivered'
-                            ? 'default'
-                            : order.status === 'in-transit'
-                            ? 'secondary'
-                            : 'outline'
-                        }
-                      >
-                        {order.status === 'delivered'
-                          ? 'Delivered'
-                          : order.status === 'in-transit'
-                          ? 'In Transit'
-                          : 'Processing'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="col-span-2">
-                        <h4 className="font-medium mb-2 text-sm">
-                          Items ({order.items.reduce((sum, i) => sum + i.quantity, 0)})
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {order.items.map((item) => (
-                            <div
-                              key={item.id}
-                              className="text-sm bg-secondary px-3 py-1 rounded"
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="col-span-2">
+                          <h4 className="font-medium mb-2 text-sm">
+                            Items ({order.items.reduce((sum, i) => sum + i.quantity, 0)})
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {order.items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="text-sm bg-secondary px-3 py-1 rounded"
+                              >
+                                {item.name} x{item.quantity}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex flex-col md:items-end justify-between">
+                          <div className="font-semibold flex items-center">
+                            Total: <IndianRupee className="h-3.5 w-3.5 ml-1 mr-0.5" />{order.total.toFixed(2)}
+                          </div>
+                          <Link to={`/tracking/${order.id}`}>
+                            <Button
+                              variant={
+                                displayStatus === 'in-transit' ? 'default' : 'outline'
+                              }
+                              size="sm"
                             >
-                              {item.name} x{item.quantity}
-                            </div>
-                          ))}
+                              {displayStatus === 'in-transit'
+                                ? 'Track Order'
+                                : 'View Details'}
+                            </Button>
+                          </Link>
                         </div>
                       </div>
-                      <div className="flex flex-col md:items-end justify-between">
-                        <div className="font-semibold flex items-center">
-                          Total: <IndianRupee className="h-3.5 w-3.5 ml-1 mr-0.5" />{order.total.toFixed(2)}
-                        </div>
-                        <Link to={`/tracking/${order.id}`}>
-                          <Button
-                            variant={
-                              order.status === 'in-transit' ? 'default' : 'outline'
-                            }
-                            size="sm"
-                          >
-                            {order.status === 'in-transit'
-                              ? 'Track Order'
-                              : 'View Details'}
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
           </div>
         )}
       </main>

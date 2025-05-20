@@ -12,7 +12,7 @@ import { checkIsAdmin } from "@/services/medicineService";
 
 export default function Navbar() {
   const { totalItems } = useCart();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isMobile = useIsMobile();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -38,7 +38,7 @@ export default function Navbar() {
               alt="MediDrone Logo"
               className="h-8 w-8"
               onError={(e) => {
-                e.currentTarget.src = 'https://placehold.co/32x32?text=MD';
+                e.currentTarget.src = '/medicine-drone-logo.png';
               }}
             />
             <span className="text-xl font-semibold text-primary">MediDrone</span>
@@ -48,9 +48,6 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-6 text-sm">
           <Link to="/" className="font-medium transition-colors hover:text-primary">
             Home
-          </Link>
-          <Link to="/categories" className="font-medium transition-colors hover:text-primary">
-            Categories
           </Link>
           {user && (
             <Link to="/orders" className="font-medium transition-colors hover:text-primary">

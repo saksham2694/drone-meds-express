@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -90,29 +89,49 @@ export default function AdminPage() {
         const adminStatus = await checkIsAdmin(user.id);
         
         if (!adminStatus) {
-          // Try to make the first user admin
-          const madeAdmin = await makeUserAdmin(user.id);
-          if (!madeAdmin) {
+          try {
+            // Try to make the user admin
+            const madeAdmin = await makeUserAdmin(user.id);
+            if (!madeAdmin) {
+              toast({
+                title: "Access Denied",
+                description: "You don't have permission to access this page.",
+                variant: "destructive",
+              });
+              navigate("/");
+              return;
+            }
+            setIsAdmin(true);
+          } catch (error) {
+            console.error("Error making user admin:", error);
             toast({
               title: "Access Denied",
-              description: "You don't have permission to access this page.",
+              description: "Failed to grant admin access.",
               variant: "destructive",
             });
             navigate("/");
             return;
           }
+        } else {
+          setIsAdmin(true);
         }
         
-        setIsAdmin(true);
-        loadMedicines();
+        await loadMedicines();
       } catch (error) {
         console.error("Error checking admin status:", error);
+        toast({
+          title: "Error",
+          description: "Failed to verify admin status. Please try again.",
+          variant: "destructive",
+        });
         navigate("/");
+      } finally {
+        setLoading(false);
       }
     };
 
     checkAdmin();
-  }, [user, navigate]);
+  }, [user, navigate, toast]);
 
   // Load medicines
   const loadMedicines = async () => {
@@ -120,6 +139,7 @@ export default function AdminPage() {
       const data = await getAllMedicines();
       setMedicines(data);
       setFilteredMedicines(data);
+      return true;
     } catch (error) {
       console.error("Error loading medicines:", error);
       toast({
@@ -127,8 +147,7 @@ export default function AdminPage() {
         description: "Failed to load medicines. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+      return false;
     }
   };
 

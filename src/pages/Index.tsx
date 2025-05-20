@@ -34,7 +34,7 @@ export default function Index() {
                   style={{ maxHeight: "300px" }}
                   onError={(e) => {
                     e.currentTarget.onerror = null;
-                    e.currentTarget.src = "https://placehold.co/600x400?text=Drone+Delivery";
+                    e.currentTarget.src = "https://images.unsplash.com/photo-1500673922987-e212871fec22?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80";
                   }}
                 />
               </div>
