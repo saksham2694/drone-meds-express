@@ -12,7 +12,7 @@ import { checkIsAdmin } from "@/services/medicineService";
 
 export default function Navbar() {
   const { totalItems } = useCart();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isMobile = useIsMobile();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -34,7 +34,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/drone-icon.png" 
+              src="/medicine-drone-logo.png" 
               alt="MediDrone Logo"
               className="h-8 w-8"
               onError={(e) => {
@@ -105,6 +105,14 @@ export default function Navbar() {
             >
               Sign In
             </Button>
+          )}
+
+          {isAdmin && (
+            <Link to="/admin">
+              <Button variant="outline" size="sm">
+                Admin Dashboard
+              </Button>
+            </Link>
           )}
         </div>
       </div>

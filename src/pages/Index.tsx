@@ -28,14 +28,10 @@ export default function Index() {
               </div>
               <div className="md:w-1/2 flex justify-center">
                 <img
-                  src="/drone-delivery.png"
+                  src="/lovable-uploads/e29d581d-e971-4236-9b9b-e9aa5e2db86a.png"
                   alt="Medicine Drone Delivery"
                   className="max-w-full h-auto rounded shadow-lg animate-drone-fly"
                   style={{ maxHeight: "300px" }}
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = "https://images.unsplash.com/photo-1500673922987-e212871fec22?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80";
-                  }}
                 />
               </div>
             </div>
