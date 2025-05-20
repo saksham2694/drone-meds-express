@@ -20,6 +20,9 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [progress, setProgress] = useState(order.deliveryProgress);
   const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const droneMarkerRef = useRef<any>(null);
+  const routePathRef = useRef<any[]>([]);
   
   // Fixed pharmacy location (starting point)
   const PHARMACY_LOCATION = { lat: 30.6425, lng: 76.8173 }; // Amity University, Mohali, Punjab
@@ -29,43 +32,11 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
   const DELIVERY_TIME_MINUTES = 5;
   const remainingMinutes = Math.ceil(DELIVERY_TIME_MINUTES * (1 - progress / 100));
 
-  // Update progress in real-time
-  useEffect(() => {
-    // Only run this for orders that aren't delivered yet
-    if (order.status === 'delivered' || progress >= 100) return;
-    
-    const startTime = new Date(order.createdAt).getTime();
-    const deliveryTimeMs = DELIVERY_TIME_MINUTES * 60 * 1000; // 5 minutes in milliseconds
-    const endTime = startTime + deliveryTimeMs;
-    
-    const updateProgress = () => {
-      const currentTime = Date.now();
-      
-      // If delivery time has passed, set progress to 100%
-      if (currentTime >= endTime) {
-        setProgress(100);
-        return;
-      }
-      
-      // Calculate progress as percentage of time elapsed
-      const elapsed = currentTime - startTime;
-      const calculatedProgress = Math.min(Math.floor((elapsed / deliveryTimeMs) * 100), 100);
-      setProgress(calculatedProgress);
-    };
-    
-    // Update progress immediately
-    updateProgress();
-    
-    // Set interval to update progress every second
-    const interval = setInterval(updateProgress, 1000);
-    
-    return () => clearInterval(interval);
-  }, [order.createdAt, order.status, progress]);
-
+  // Initialize map once
   useEffect(() => {
     // Define the callback function for the Google Maps API
     window.initMap = (orderId: string) => {
-      if (!mapRef.current || orderId !== order.id) return;
+      if (!mapRef.current || orderId !== order.id || mapInstanceRef.current) return;
       
       // Get address string from order
       const destinationAddress = `${order.address.street}, ${order.address.city}, ${order.address.state} ${order.address.zipCode}, India`;
@@ -86,6 +57,9 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
             zoom: 10,
             mapTypeControl: false,
           });
+          
+          // Save map instance to ref
+          mapInstanceRef.current = map;
           
           // Add markers for pharmacy (origin) and delivery address (destination)
           const pharmacyMarker = new window.google.maps.Marker({
@@ -145,25 +119,24 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
               if (status === "OK") {
                 directionsRenderer.setDirections(result);
                 
-                // Calculate drone position along the route based on progress
-                if (progress > 0 && progress < 100) {
-                  const route = result.routes[0].overview_path;
-                  const progressValue = progress / 100;
-                  const index = Math.floor(progressValue * route.length);
-                  
-                  // Add drone marker
-                  const dronePosition = route[Math.min(index, route.length - 1)];
-                  
-                  const droneMarker = new window.google.maps.Marker({
-                    position: dronePosition,
-                    map: map,
-                    icon: {
-                      url: "/drone-icon.png",
-                      scaledSize: new window.google.maps.Size(32, 32),
-                    },
-                    title: "Delivery Drone",
-                  });
-                }
+                // Save the route path for later use
+                routePathRef.current = result.routes[0].overview_path;
+                
+                // Create drone marker but don't add to map yet
+                const droneMarker = new window.google.maps.Marker({
+                  map: map,
+                  icon: {
+                    url: "/drone-icon.png",
+                    scaledSize: new window.google.maps.Size(32, 32),
+                  },
+                  title: "Delivery Drone",
+                });
+                
+                // Save the drone marker reference
+                droneMarkerRef.current = droneMarker;
+                
+                // Update drone position based on initial progress
+                updateDronePosition(progress);
                 
                 // Fit the map bounds to include both markers
                 const bounds = new window.google.maps.LatLngBounds();
@@ -177,10 +150,10 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
               }
             }
           );
+          
+          setMapLoaded(true);
         }
       });
-      
-      setMapLoaded(true);
     };
 
     // Load Google Maps API if not already loaded
@@ -197,7 +170,79 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
     } else if (window.google.maps) {
       window.initMap(order.id);
     }
-  }, [order.id, progress, order.address]);
+
+    // Cleanup function
+    return () => {
+      // Clear any references when component unmounts
+      mapInstanceRef.current = null;
+      droneMarkerRef.current = null;
+      routePathRef.current = [];
+    };
+  }, [order.id, order.address]); // Only recreate map when order ID or address changes
+
+  // Function to update drone position without recreating the map
+  const updateDronePosition = (currentProgress: number) => {
+    if (
+      !mapInstanceRef.current || 
+      !droneMarkerRef.current || 
+      !routePathRef.current || 
+      routePathRef.current.length === 0
+    ) {
+      return;
+    }
+
+    // Only show drone if order is in progress
+    if (currentProgress > 0 && currentProgress < 100) {
+      const progressValue = currentProgress / 100;
+      const index = Math.floor(progressValue * (routePathRef.current.length - 1));
+      
+      // Set drone position along the route
+      const position = routePathRef.current[Math.min(index, routePathRef.current.length - 1)];
+      droneMarkerRef.current.setPosition(position);
+      
+      // Make sure the drone is visible
+      droneMarkerRef.current.setMap(mapInstanceRef.current);
+    } else if (currentProgress >= 100) {
+      // Hide drone at 100% (delivered)
+      droneMarkerRef.current.setMap(null);
+    }
+  };
+
+  // Update progress in real-time
+  useEffect(() => {
+    // Only run this for orders that aren't delivered yet
+    if (order.status === 'delivered' || progress >= 100) return;
+    
+    const startTime = new Date(order.createdAt).getTime();
+    const deliveryTimeMs = DELIVERY_TIME_MINUTES * 60 * 1000; // 5 minutes in milliseconds
+    const endTime = startTime + deliveryTimeMs;
+    
+    const updateProgress = () => {
+      const currentTime = Date.now();
+      
+      // If delivery time has passed, set progress to 100%
+      if (currentTime >= endTime) {
+        setProgress(100);
+        return;
+      }
+      
+      // Calculate progress as percentage of time elapsed
+      const elapsed = currentTime - startTime;
+      const calculatedProgress = Math.min(Math.floor((elapsed / deliveryTimeMs) * 100), 100);
+      setProgress(calculatedProgress);
+      
+      // Update drone position on the map based on new progress
+      updateDronePosition(calculatedProgress);
+    };
+    
+    // Update progress immediately
+    updateProgress();
+    
+    // Set interval to update progress every second
+    const interval = setInterval(updateProgress, 1000);
+    
+    return () => clearInterval(interval);
+  }, [order.createdAt, order.status, DELIVERY_TIME_MINUTES]);
 
   // Determine order status based on progress
   const orderStatus = progress >= 100 ? 'delivered' : progress > 0 ? 'in-transit' : 'processing';
