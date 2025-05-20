@@ -107,11 +107,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Generate a random ETA (10-30 minutes)
       const eta = Math.floor(Math.random() * 21) + 10;
+      
+      // Generate a UUID for the order
+      const orderId = crypto.randomUUID();
 
-      // Insert data with the correct format - fixing the issue with missing fields
+      // Insert data with all required fields including id
       const { data, error } = await supabase
         .from("orders")
         .insert({
+          id: orderId,
           user_id: user.id,
           items: items as unknown as Json,
           status: "processing",
@@ -119,7 +123,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
           address: address as unknown as Json,
           delivery_progress: 0,
           eta: eta,
-          created_at: new Date().toISOString(), // Add the missing created_at field
+          created_at: new Date().toISOString(),
         })
         .select()
         .single();
