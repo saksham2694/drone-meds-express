@@ -10,6 +10,7 @@ import LoginModal from "@/components/auth/LoginModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { checkIsAdmin } from "@/services/medicineService";
 import ThemeToggle from "@/components/theme/ThemeToggle";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Navbar() {
   const { totalItems } = useCart();
@@ -17,6 +18,8 @@ export default function Navbar() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isMobile = useIsMobile();
   const [isAdmin, setIsAdmin] = useState(false);
+  const { theme } = useTheme();
+  const isDarkMode = theme === "dark";
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -34,14 +37,25 @@ export default function Navbar() {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
-            <img
-              src="/lovable-uploads/a25f0758-913a-43c9-bdb5-2b9cf0968628.png" 
-              alt="MediDrone Logo"
-              className="h-8 w-8"
-              onError={(e) => {
-                e.currentTarget.src = 'https://placehold.co/32x32?text=MD';
-              }}
-            />
+            {isDarkMode ? (
+              <img
+                src="/lovable-uploads/a25f0758-913a-43c9-bdb5-2b9cf0968628-white.png" 
+                alt="MediDrone Logo"
+                className="h-8 w-8"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://placehold.co/32x32?text=MD';
+                }}
+              />
+            ) : (
+              <img
+                src="/lovable-uploads/a25f0758-913a-43c9-bdb5-2b9cf0968628.png" 
+                alt="MediDrone Logo"
+                className="h-8 w-8"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://placehold.co/32x32?text=MD';
+                }}
+              />
+            )}
             <span className="text-xl font-semibold text-primary">MediDrone</span>
           </Link>
         </div>
