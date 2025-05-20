@@ -28,6 +28,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.add(theme);
     // Save to localStorage
     localStorage.setItem("theme", theme);
+    
+    // Update favicon based on theme
+    const faviconLink = document.querySelector('link[rel="icon"]');
+    if (faviconLink) {
+      faviconLink.setAttribute('href', theme === 'dark' 
+        ? '/lovable-uploads/05d16cab-f106-477e-99e9-c970e59960ad.png'
+        : '/lovable-uploads/a25f0758-913a-43c9-bdb5-2b9cf0968628.png');
+    }
   }, [theme]);
 
   const toggleTheme = () => {
