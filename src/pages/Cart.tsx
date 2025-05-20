@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,14 @@ import CartItemComponent from "@/components/cart/CartItem";
 import { Address } from "@/types";
 import { toast } from "sonner";
 import LoginModal from "@/components/auth/LoginModal";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MapPin } from "lucide-react";
+
+declare global {
+  interface Window {
+    google: any;
+    initAutocomplete: () => void;
+  }
+}
 
 export default function Cart() {
   const { items, totalPrice, clearCart } = useCart();
@@ -30,6 +37,100 @@ export default function Cart() {
   
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const autocompleteRef = useRef<HTMLInputElement>(null);
+  const [placeSelected, setPlaceSelected] = useState(false);
+
+  // Set up Google Places Autocomplete
+  useEffect(() => {
+    // Define the callback function for the Google Maps API
+    window.initAutocomplete = () => {
+      if (!autocompleteRef.current) return;
+      
+      const options = {
+        componentRestrictions: { country: "in" }, // Restrict to India
+        fields: ["address_components", "geometry", "name"],
+        types: ["address"],
+      };
+
+      const autocomplete = new window.google.maps.places.Autocomplete(
+        autocompleteRef.current,
+        options
+      );
+
+      // Handle place selection
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) {
+          return;
+        }
+
+        // Parse address components
+        let streetNumber = "";
+        let route = "";
+        let locality = "";
+        let city = "";
+        let state = "";
+        let postalCode = "";
+
+        for (const component of place.address_components) {
+          const componentType = component.types[0];
+
+          switch (componentType) {
+            case "street_number":
+              streetNumber = component.long_name;
+              break;
+            case "route":
+              route = component.long_name;
+              break;
+            case "sublocality_level_1":
+            case "sublocality":
+              locality = component.long_name;
+              break;
+            case "locality":
+              city = component.long_name;
+              break;
+            case "administrative_area_level_1":
+              state = component.short_name;
+              break;
+            case "postal_code":
+              postalCode = component.long_name;
+              break;
+          }
+        }
+
+        // Create the street address
+        const streetAddress = [
+          streetNumber,
+          route,
+          locality ? locality + "," : "",
+        ].filter(Boolean).join(" ");
+
+        setAddress({
+          street: streetAddress,
+          city: city || "",
+          state: state || "",
+          zipCode: postalCode || "",
+        });
+        
+        setPlaceSelected(true);
+      });
+    };
+
+    // Load Google Maps API if not already loaded
+    if (!window.google) {
+      const script = document.createElement("script");
+      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyD2vOÖl75JQfXI44rg4cLfYT40-q47lXBU&libraries=places&callback=initAutocomplete";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+      
+      return () => {
+        document.head.removeChild(script);
+      };
+    } else if (window.google.maps && window.google.maps.places) {
+      window.initAutocomplete();
+    }
+  }, []);
 
   const handlePlaceOrder = async () => {
     if (!user) {
@@ -54,6 +155,14 @@ export default function Cart() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddressChange = (field: keyof Address, value: string) => {
+    setAddress(prev => ({ ...prev, [field]: value }));
+    // If user manually edits after place selection, reset flag
+    if (placeSelected) {
+      setPlaceSelected(false);
     }
   };
 
@@ -112,7 +221,7 @@ export default function Cart() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${totalPrice.toFixed(2)}</span>
+                    <span>₹{totalPrice.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Delivery</span>
@@ -121,7 +230,7 @@ export default function Cart() {
                   <Separator className="my-2" />
                   <div className="flex justify-between font-semibold">
                     <span>Total</span>
-                    <span>${totalPrice.toFixed(2)}</span>
+                    <span>₹{totalPrice.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -130,14 +239,26 @@ export default function Cart() {
                 <h3 className="text-lg font-semibold mb-4">Delivery Address</h3>
                 <div className="space-y-3">
                   <div>
+                    <Label htmlFor="autocomplete" className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" /> Search Address
+                    </Label>
+                    <Input
+                      id="autocomplete"
+                      ref={autocompleteRef}
+                      placeholder="Search for your address"
+                      className="bg-background"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Search for your address or fill in the fields below
+                    </p>
+                  </div>
+                  <div>
                     <Label htmlFor="street">Street Address</Label>
                     <Input
                       id="street"
                       value={address.street}
-                      onChange={(e) =>
-                        setAddress({ ...address, street: e.target.value })
-                      }
-                      placeholder="123 Main St"
+                      onChange={(e) => handleAddressChange('street', e.target.value)}
+                      placeholder="123 Gandhi Road, Sector 14"
                       required
                     />
                   </div>
@@ -146,10 +267,8 @@ export default function Cart() {
                     <Input
                       id="city"
                       value={address.city}
-                      onChange={(e) =>
-                        setAddress({ ...address, city: e.target.value })
-                      }
-                      placeholder="New York"
+                      onChange={(e) => handleAddressChange('city', e.target.value)}
+                      placeholder="Mumbai"
                       required
                     />
                   </div>
@@ -159,22 +278,18 @@ export default function Cart() {
                       <Input
                         id="state"
                         value={address.state}
-                        onChange={(e) =>
-                          setAddress({ ...address, state: e.target.value })
-                        }
-                        placeholder="NY"
+                        onChange={(e) => handleAddressChange('state', e.target.value)}
+                        placeholder="Maharashtra"
                         required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="zipCode">Zip Code</Label>
+                      <Label htmlFor="zipCode">PIN Code</Label>
                       <Input
                         id="zipCode"
                         value={address.zipCode}
-                        onChange={(e) =>
-                          setAddress({ ...address, zipCode: e.target.value })
-                        }
-                        placeholder="10001"
+                        onChange={(e) => handleAddressChange('zipCode', e.target.value)}
+                        placeholder="400001"
                         required
                       />
                     </div>

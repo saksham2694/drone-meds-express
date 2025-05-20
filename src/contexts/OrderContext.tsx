@@ -108,19 +108,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({
       // Generate a random ETA (10-30 minutes)
       const eta = Math.floor(Math.random() * 21) + 10;
 
-      // Fix: Define the order data with the correct types expected by Supabase
-      // We need to use an array for insertion, not a single object
+      // Fix the insert operation to work with Supabase's expected format
       const { data, error } = await supabase
         .from("orders")
-        .insert([{
+        .insert({
           user_id: user.id,
-          items: items as unknown as Json, // Cast to Json type for Supabase
+          items: items as unknown as Json,
           status: "processing",
           total: total,
-          address: address as unknown as Json, // Cast to Json type for Supabase
+          address: address as unknown as Json,
           delivery_progress: 0,
           eta: eta,
-        }])
+        })
         .select()
         .single();
 

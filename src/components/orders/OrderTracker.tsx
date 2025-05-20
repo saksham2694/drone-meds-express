@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Order } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
@@ -9,29 +9,151 @@ interface OrderTrackerProps {
   order: Order;
 }
 
-export default function OrderTracker({ order }: OrderTrackerProps) {
-  const [dronePosition, setDronePosition] = useState({ x: 10, y: 50 });
-  const [mapZoom, setMapZoom] = useState(14);
+declare global {
+  interface Window {
+    google: any;
+    initMap: (orderId: string) => void;
+  }
+}
 
+export default function OrderTracker({ order }: OrderTrackerProps) {
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
+  
   // Calculate remaining time based on progress
   const remainingMinutes = Math.ceil(order.eta * (1 - order.deliveryProgress / 100));
 
-  // Simulate drone movement
-  useEffect(() => {
-    if (order.status === 'in-transit') {
-      // Calculate progress percentage for animation
-      const progress = order.deliveryProgress;
-      
-      // Simple movement logic - drone moves from left to right
-      setDronePosition({
-        x: 10 + (progress * 0.8), // Move from 10% to 90% based on progress
-        y: 50 + Math.sin(progress * 0.1) * 10 // Add some "flying" wave effect
-      });
+  // Fixed pharmacy location (starting point)
+  const PHARMACY_LOCATION = { lat: 19.0760, lng: 72.8777 }; // Mumbai coordinates
+  const PHARMACY_NAME = "MediDrone Pharmacy HQ";
 
-      // Zoom in as drone gets closer
-      setMapZoom(14 + (progress / 100) * 4);
+  useEffect(() => {
+    // Define the callback function for the Google Maps API
+    window.initMap = (orderId: string) => {
+      if (!mapRef.current || orderId !== order.id) return;
+      
+      // Get address string from order
+      const destinationAddress = `${order.address.street}, ${order.address.city}, ${order.address.state} ${order.address.zipCode}, India`;
+      
+      // Create a geocoder to convert address to coordinates
+      const geocoder = new window.google.maps.Geocoder();
+      
+      geocoder.geocode({ address: destinationAddress }, (results: any, status: any) => {
+        if (status === "OK" && results[0]) {
+          const destinationLocation = results[0].geometry.location;
+          
+          // Create the map
+          const map = new window.google.maps.Map(mapRef.current, {
+            center: { 
+              lat: (PHARMACY_LOCATION.lat + destinationLocation.lat()) / 2,
+              lng: (PHARMACY_LOCATION.lng + destinationLocation.lng()) / 2
+            },
+            zoom: 12,
+            mapTypeControl: false,
+          });
+          
+          // Add markers for pharmacy (origin) and delivery address (destination)
+          const pharmacyMarker = new window.google.maps.Marker({
+            position: PHARMACY_LOCATION,
+            map: map,
+            title: PHARMACY_NAME,
+            icon: {
+              url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+            },
+          });
+          
+          const destinationMarker = new window.google.maps.Marker({
+            position: destinationLocation,
+            map: map,
+            title: "Delivery Address",
+            icon: {
+              url: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+            },
+          });
+          
+          // Add info windows
+          const pharmacyInfo = new window.google.maps.InfoWindow({
+            content: `<div><strong>${PHARMACY_NAME}</strong><br>Starting Point</div>`,
+          });
+          
+          const destinationInfo = new window.google.maps.InfoWindow({
+            content: `<div><strong>Delivery Address</strong><br>${destinationAddress}</div>`,
+          });
+          
+          pharmacyMarker.addListener("click", () => {
+            pharmacyInfo.open(map, pharmacyMarker);
+          });
+          
+          destinationMarker.addListener("click", () => {
+            destinationInfo.open(map, destinationMarker);
+          });
+          
+          // Draw route between points
+          const directionsService = new window.google.maps.DirectionsService();
+          const directionsRenderer = new window.google.maps.DirectionsRenderer({
+            map: map,
+            suppressMarkers: true,
+            polylineOptions: {
+              strokeColor: "#4285F4",
+              strokeWeight: 5,
+              strokeOpacity: 0.8,
+            },
+          });
+          
+          directionsService.route(
+            {
+              origin: PHARMACY_LOCATION,
+              destination: destinationLocation,
+              travelMode: window.google.maps.TravelMode.DRIVING,
+            },
+            (result: any, status: any) => {
+              if (status === "OK") {
+                directionsRenderer.setDirections(result);
+                
+                // Calculate drone position along the route based on progress
+                if (order.status === "in-transit" && order.deliveryProgress > 0) {
+                  const route = result.routes[0].overview_path;
+                  const progress = order.deliveryProgress / 100;
+                  const index = Math.floor(progress * route.length);
+                  
+                  // Add drone marker
+                  const dronePosition = route[Math.min(index, route.length - 1)];
+                  
+                  // Add drone marker
+                  const droneMarker = new window.google.maps.Marker({
+                    position: dronePosition,
+                    map: map,
+                    icon: {
+                      url: "/drone-icon.png",
+                      scaledSize: new window.google.maps.Size(32, 32),
+                    },
+                    title: "Delivery Drone",
+                  });
+                }
+              }
+            }
+          );
+        }
+      });
+      
+      setMapLoaded(true);
+    };
+
+    // Load Google Maps API if not already loaded
+    if (!window.google) {
+      const script = document.createElement("script");
+      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyD2vOÖl75JQfXI44rg4cLfYT40-q47lXBU&callback=initMap&v=weekly&orderId=" + order.id;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+      
+      return () => {
+        document.head.removeChild(script);
+      };
+    } else if (window.google.maps) {
+      window.initMap(order.id);
     }
-  }, [order.deliveryProgress, order.status]);
+  }, [order.id, order.deliveryProgress, order.status]);
 
   return (
     <Card className="p-6">
@@ -68,56 +190,14 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
           <Progress value={order.deliveryProgress} className="h-2" />
         </div>
 
-        <div className="bg-secondary rounded-lg p-1 relative overflow-hidden" style={{ height: "200px" }}>
-          {/* Simple mock map */}
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-70"
-            style={{
-              backgroundImage:
-                "url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+555555(-122.4194,37.7749)/-122.4194,37.7749,13/500x300?access_token=pk.eyJ1IjoibWVkaWRyb25lIiwiYSI6ImNsc3g4Z3ptajA5cWwyam8xNnIzNW04ZzcifQ.7OyuAQJdzDAAuJ43MFW_Cw')",
-              filter: "grayscale(30%)",
-            }}
-          ></div>
-
-          {/* Drone icon */}
-          <div
-            className={`absolute w-10 h-10 transform -translate-x-1/2 -translate-y-1/2 ${
-              order.status === 'delivered' ? '' : 'animate-drone-fly'
-            }`}
-            style={{
-              left: `${dronePosition.x}%`,
-              top: `${dronePosition.y}%`,
-            }}
-          >
-            <img src="/drone-icon.png" alt="Drone" className="w-full h-full" />
-          </div>
-
-          {/* Destination marker */}
-          <div
-            className="absolute w-6 h-6 transform -translate-x-1/2 -translate-y-1/2"
-            style={{ left: '90%', top: '50%' }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <path
-                d="M12 22C12 22 20 16 20 10C20 5.58172 16.4183 2 12 2C7.58172 2 4 5.58172 4 10C4 16 12 22 12 22Z"
-                fill="#ef4444"
-                stroke="#ef4444"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle
-                cx="12"
-                cy="10"
-                r="3"
-                fill="white"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
+        <div className="relative overflow-hidden rounded-lg" style={{ height: "250px" }}>
+          <div ref={mapRef} className="w-full h-full"></div>
+          
+          {!mapLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-secondary">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          )}
         </div>
 
         {order.status === 'in-transit' && (

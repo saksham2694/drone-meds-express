@@ -1,12 +1,12 @@
+
 import { Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import Tracking from "./pages/Tracking";
+import Categories from "./pages/Categories";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
-
-// Add the admin route import
 import Admin from "./pages/Admin";
 
 function App() {
@@ -17,7 +17,8 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/tracking/:orderId" element={<Tracking />} />
-        <Route path="/admin" element={<Admin />} /> {/* Add this line */}
+        <Route path="/categories" element={<Categories />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
