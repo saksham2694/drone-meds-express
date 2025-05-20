@@ -133,7 +133,7 @@ export default function Orders() {
                             {order.items.map((item) => (
                               <div
                                 key={item.id}
-                                className="text-sm bg-secondary px-3 py-1 rounded"
+                                className="text-sm bg-muted px-3 py-1 rounded-md"
                               >
                                 {item.name} x{item.quantity}
                               </div>
