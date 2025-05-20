@@ -2,8 +2,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Order, CartItem, Address } from '@/types';
 import { useAuth } from './AuthContext';
-import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OrderContextType {
   orders: Order[];
@@ -19,9 +19,33 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const { user } = useAuth();
 
-  // Load orders from localStorage on initial load
+  // Load orders from Supabase on initial load
   useEffect(() => {
     if (user) {
+      const fetchOrders = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('userId', user.id)
+            .order('createdAt', { ascending: false });
+
+          if (error) {
+            console.error('Error fetching orders:', error);
+            return;
+          }
+
+          if (data) {
+            setOrders(data as Order[]);
+          }
+        } catch (error) {
+          console.error('Failed to fetch orders', error);
+        }
+      };
+
+      fetchOrders();
+
+      // Fallback to localStorage if Supabase fetch fails
       const savedOrders = localStorage.getItem(`orders-${user.id}`);
       if (savedOrders) {
         try {
@@ -33,7 +57,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  // Save orders to localStorage whenever they change
+  // Save orders to localStorage as a backup
   useEffect(() => {
     if (user) {
       localStorage.setItem(`orders-${user.id}`, JSON.stringify(orders));
@@ -57,6 +81,18 @@ export function OrderProvider({ children }: { children: ReactNode }) {
               status: 'delivered' as const
             };
             
+            // Update in Supabase
+            supabase
+              .from('orders')
+              .update({ 
+                deliveryProgress: 100, 
+                status: 'delivered' 
+              })
+              .eq('id', updatedOrder.id)
+              .then(({ error }) => {
+                if (error) console.error('Failed to update order in Supabase', error);
+              });
+            
             // Update in orders list
             setOrders(prevOrders => 
               prevOrders.map(order => 
@@ -67,6 +103,15 @@ export function OrderProvider({ children }: { children: ReactNode }) {
             toast.success("Your order has been delivered!");
             return updatedOrder;
           }
+          
+          // Update progress in Supabase
+          supabase
+            .from('orders')
+            .update({ deliveryProgress: newProgress })
+            .eq('id', prevOrder.id)
+            .then(({ error }) => {
+              if (error) console.error('Failed to update order progress in Supabase', error);
+            });
           
           return {
             ...prevOrder,
@@ -86,7 +131,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     const eta = 5; // 5 minutes ETA
     
     const newOrder: Order = {
-      id: uuidv4(),
+      id: crypto.randomUUID(), // Use built-in crypto API instead of uuid package
       userId: user.id,
       items,
       total,
@@ -96,6 +141,20 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       eta,
       deliveryProgress: 0
     };
+    
+    try {
+      // Insert into Supabase
+      const { error } = await supabase
+        .from('orders')
+        .insert(newOrder);
+      
+      if (error) {
+        console.error('Failed to save order to Supabase', error);
+        // Fallback to local state only if Supabase insert fails
+      }
+    } catch (error) {
+      console.error('Error creating order in Supabase', error);
+    }
     
     setOrders(prevOrders => [...prevOrders, newOrder]);
     setCurrentOrder(newOrder);

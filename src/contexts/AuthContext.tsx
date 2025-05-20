@@ -1,6 +1,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -12,54 +14,121 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// This is a placeholder implementation that will be replaced with Supabase auth
+// Utility function to clean up auth state
+const cleanupAuthState = () => {
+  // Remove standard auth tokens
+  localStorage.removeItem('supabase.auth.token');
+  // Remove all Supabase auth keys from localStorage
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      localStorage.removeItem(key);
+    }
+  });
+  // Remove from sessionStorage if in use
+  Object.keys(sessionStorage || {}).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      sessionStorage.removeItem(key);
+    }
+  });
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is stored in localStorage (temporary solution)
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Failed to parse user from localStorage', error);
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || '',
+            photoURL: session.user.user_metadata?.avatar_url,
+          });
+        } else {
+          setUser(null);
+        }
       }
-    }
-    setIsLoading(false);
+    );
+
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || '',
+          photoURL: session.user.user_metadata?.avatar_url,
+        });
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    // This will be implemented with Supabase
-    setUser({
-      id: 'temp-user-id',
-      email,
-      name: email.split('@')[0],
-    });
-    localStorage.setItem('user', JSON.stringify({
-      id: 'temp-user-id',
-      email,
-      name: email.split('@')[0],
-    }));
+    try {
+      // Clean up existing state
+      cleanupAuthState();
+      // Attempt global sign out
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continue even if this fails
+      }
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error signing in:', error);
+      throw error;
+    }
   };
 
   const signInWithGoogle = async () => {
-    // This will be implemented with Supabase
-    const mockUser = {
-      id: 'google-user-id',
-      email: 'user@example.com',
-      name: 'Test User',
-      photoURL: 'https://randomuser.me/api/portraits/lego/1.jpg',
-    };
-    setUser(mockUser);
-    localStorage.setItem('user', JSON.stringify(mockUser));
+    try {
+      // Clean up existing state
+      cleanupAuthState();
+      // Attempt global sign out
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continue even if this fails
+      }
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    // This will be implemented with Supabase
-    setUser(null);
-    localStorage.removeItem('user');
+    try {
+      // Clean up auth state
+      cleanupAuthState();
+      // Attempt global sign out
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
   };
 
   return (
