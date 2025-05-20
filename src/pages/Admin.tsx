@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -51,6 +52,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import UserAdminManager from "@/components/admin/UserAdminManager";
 
 export default function AdminPage() {
   console.log("Admin component rendering"); // Debug log
@@ -299,6 +301,10 @@ export default function AdminPage() {
           <p className="text-muted-foreground">
             Manage medicines in the database
           </p>
+        </div>
+
+        <div className="grid gap-8 mb-8">
+          <UserAdminManager />
         </div>
 
         <Card className="mb-8">
